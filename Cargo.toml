@@ -1,0 +1,8 @@
+[package]
+name = "quizer"
+version = "0.1.0"
+authors = ["LothTikar <LothTikar@gmail.com>"]
+
+[dependencies]
+csv = "1.0.1"
+gtk = "0.4.1"
