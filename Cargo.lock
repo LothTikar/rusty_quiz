@@ -278,7 +278,7 @@ version = "0.3.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "quizer"
+name = "rusty_quiz"
 version = "0.1.0"
 dependencies = [
  "csv 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
