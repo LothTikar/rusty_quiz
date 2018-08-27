@@ -1,18 +1,33 @@
+extern crate csv;
 extern crate gl;
 extern crate glfw;
-extern crate csv;
 
 use glfw::Context;
 use std::env;
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    println!("{:?}", args);
-    if args.len() < 2 {
-        println!("Error: No filename for quiz given!");
-        return;
-    }
+    let mut csv_reader = {
+        let args: Vec<String> = env::args().collect();
+        println!("{:?}", args);
+        if args.len() < 2 {
+            println!("Error: No filename for quiz given!");
+            return;
+        }
 
+        csv::Reader::from_path(&args[1]).unwrap()
+    };
+
+	//Test code
+	println!("header");
+	for result in csv_reader.headers() {
+        println!("{:?}", result);
+    }
+	
+	println!("content");
+	for result in csv_reader.records() {
+        println!("{:?}", result.unwrap());
+    }
+	
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
     glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
     glfw.window_hint(glfw::WindowHint::OpenGlProfile(
