@@ -102,7 +102,7 @@ unsafe fn set_texture_data(image: &image::DynamicImage) {
     );
 }
 
-unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint, verts: &Vec<GLfloat>) {
+unsafe fn opengl_setup() {
     let mut vao: GLuint = 0;
     gl::GenVertexArrays(1, &mut vao);
     gl::BindVertexArray(vao);
@@ -110,6 +110,11 @@ unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint, verts: &Vec<GLfloat>) {
     gl::ClearColor(0.95, 0.95, 0.95, 0.0);
     gl::Enable(gl::DEPTH_TEST);
 
+    gl::Enable(gl::BLEND);
+    gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
+}
+
+unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint, verts: &Vec<GLfloat>) {
     gl::GenBuffers(1, vert_buffer as *mut GLuint);
     gl::BindBuffer(gl::ARRAY_BUFFER, *vert_buffer);
 
@@ -217,7 +222,7 @@ fn main() {
     let mut verts: Vec<GLfloat> = Vec::new();
 
     //pos
-    verts.push(-0.5/2.0);
+    verts.push(-0.5 / 2.0);
     verts.push(-0.5);
     //color
     verts.push(1.0);
@@ -228,7 +233,7 @@ fn main() {
     verts.push(1.0);
 
     //pos
-    verts.push(0.5/2.0);
+    verts.push(0.5 / 2.0);
     verts.push(-0.5);
     //color
     verts.push(0.0);
@@ -239,20 +244,7 @@ fn main() {
     verts.push(1.0);
 
     //pos
-    verts.push(-0.5/2.0);
-    verts.push(0.5);
-    //color
-    verts.push(0.0);
-    verts.push(0.0);
-    verts.push(1.0);
-    //tex coord
-    verts.push(0.0);
-    verts.push(0.0);
-	
-	
-	
-	//pos
-    verts.push(-0.5/2.0);
+    verts.push(-0.5 / 2.0);
     verts.push(0.5);
     //color
     verts.push(0.0);
@@ -263,7 +255,18 @@ fn main() {
     verts.push(0.0);
 
     //pos
-    verts.push(0.5/2.0);
+    verts.push(-0.5 / 2.0);
+    verts.push(0.5);
+    //color
+    verts.push(0.0);
+    verts.push(0.0);
+    verts.push(1.0);
+    //tex coord
+    verts.push(0.0);
+    verts.push(0.0);
+
+    //pos
+    verts.push(0.5 / 2.0);
     verts.push(0.5);
     //color
     verts.push(1.0);
@@ -274,7 +277,7 @@ fn main() {
     verts.push(0.0);
 
     //pos
-    verts.push(0.5/2.0);
+    verts.push(0.5 / 2.0);
     verts.push(-0.5);
     //color
     verts.push(0.0);
@@ -283,13 +286,11 @@ fn main() {
     //tex coord
     verts.push(1.0);
     verts.push(1.0);
-	
-	
-	
 
     println!("number of verts:{}", verts.len());
 
     unsafe {
+		opengl_setup();
         setup_shaders(&vert_src, &frag_src);
         vertex_buffer_setup(&mut vert_buffer, &verts);
         texture_setup(&mut texture_buffer);
