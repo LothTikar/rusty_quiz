@@ -104,7 +104,10 @@ unsafe fn texture_setup(texture: &mut GLuint) {
     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
 }
 
-unsafe fn set_texture_data(image: &image::DynamicImage) {
+unsafe fn set_texture_data(image: &image::DynamicImage) {	
+	println!("dimensions {:?}", image.dimensions());
+    println!("{:?}", image.color());
+	
     gl::TexImage2D(
         gl::TEXTURE_2D,
         0,
@@ -139,7 +142,7 @@ unsafe fn opengl_setup() {
     gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
 }
 
-unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint, verts: &Vec<GLfloat>) {
+unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint) {
     gl::GenBuffers(1, vert_buffer as *mut GLuint);
     gl::BindBuffer(gl::ARRAY_BUFFER, *vert_buffer);
 
@@ -239,17 +242,49 @@ fn main() {
         }
     }
 
-    let mut content: Vec<Vec<String>> = Vec::new();
+    let header = header;
 
-    for result in csv_reader.records() {
-        content.push({
-            let mut record: Vec<String> = Vec::new();
-            for header in result.unwrap().iter() {
-                record.push(header.to_string());
+    let mut slides: Vec<Slide> = Vec::new();
+
+    for record in csv_reader.records() {
+        let record = record.unwrap();
+
+        let mut slide = Slide {
+            image: None,
+            hints: Vec::new(),
+            answers: Vec::new(),
+            rendered_hints: Vec::new(),
+            rendered_answers: Vec::new(),
+        };
+
+        let mut i = 0;
+        for value in record.iter() {
+            let value = value.to_string();
+            match i {
+                0 => {
+                    if !value.is_empty() {
+                        slide.image = Some(image::open(value).unwrap());
+                    }
+                }
+                _ if i <= header.number_of_hints => {
+                    slide
+                        .rendered_hints
+                        .push(render_text(&font, 32.0, value.as_str()));
+                    slide.hints.push(value);
+                }
+                _ => {
+                    slide
+                        .rendered_answers
+                        .push(render_text(&font, 32.0, value.as_str()));
+                    slide.answers.push(value);
+                }
             }
-            record
-        });
+            i += 1;
+        }
+        slides.push(slide);
     }
+
+    let slides = slides;
 
     let img_right = image::open("./resources/icons8-checked-50.png").unwrap();
     let img_wrong = image::open("./resources/icons8-cancel-50.png").unwrap();
@@ -357,11 +392,15 @@ fn main() {
     unsafe {
         opengl_setup();
         setup_shaders(&vert_src, &frag_src);
-        vertex_buffer_setup(&mut vert_buffer, &verts);
+        vertex_buffer_setup(&mut vert_buffer);
         texture_setup(&mut texture_buffer);
         set_vertex_data(&verts);
-        set_texture_data(header.rendered_questions.last().unwrap());
+		println!("test1");
+        set_texture_data(slides.last().as_ref().unwrap().image.as_ref().unwrap());
+		println!("test2");
     }
+
+    print_gl_error();
 
     while !window.should_close() {
         let window_size = window.get_size();
