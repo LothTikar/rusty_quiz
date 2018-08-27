@@ -2,12 +2,14 @@ extern crate csv;
 extern crate gl;
 extern crate glfw;
 extern crate image;
+extern crate rusttype;
 
 use gl::types::*;
 use glfw::Context;
-use image::GenericImage;
+use image::{DynamicImage, GenericImage, Rgba};
 use std::env;
 use std::io::Read;
+use rusttype::{point, Font, Scale};
 
 fn print_gl_error() {
     println!(
@@ -151,6 +153,62 @@ unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint, verts: &Vec<GLfloat>) {
 }
 
 fn main() {
+    // Load the font
+    let font_data = std::fs::read("./resources/Ubuntu-R.ttf").unwrap();
+    // This only succeeds if collection consists of one font
+    let font = Font::from_bytes(font_data.as_slice()).expect("Error constructing Font");
+
+    // The font size to use
+    let scale = Scale::uniform(32.0);
+
+    // The text to render
+    let text = "This is RustType rendered into a png!";
+
+    let v_metrics = font.v_metrics(scale);
+
+    // layout the glyphs in a line with 20 pixels padding
+    let glyphs: Vec<_> = font
+        .layout(text, scale, point(20.0, 20.0 + v_metrics.ascent))
+        .collect();
+
+    // work out the layout size
+    let glyphs_height = (v_metrics.ascent - v_metrics.descent).ceil() as u32;
+    let glyphs_width = {
+        let min_x = glyphs
+            .first()
+            .map(|g| g.pixel_bounding_box().unwrap().min.x)
+            .unwrap();
+        let max_x = glyphs
+            .last()
+            .map(|g| g.pixel_bounding_box().unwrap().max.x)
+            .unwrap();
+        (max_x - min_x) as u32
+    };
+
+    // Create a new rgba image with some padding
+    let mut image = DynamicImage::new_rgba8(glyphs_width + 40, glyphs_height + 40);
+
+    // Loop through the glyphs in the text, positing each one on a line
+    for glyph in glyphs {
+        if let Some(bounding_box) = glyph.pixel_bounding_box() {
+            // Draw the glyph into the image per-pixel by using the draw closure
+            glyph.draw(|x, y, v| {
+                image.put_pixel(
+                    // Offset the position by the glyph bounding box
+                    x + bounding_box.min.x as u32,
+                    y + bounding_box.min.y as u32,
+                    // Turn the coverage into an alpha value
+                    Rgba {
+                        data: [255, 255, 255, (v * 255.0) as u8],
+                    },
+                )
+            });
+        }
+    }
+
+
+
+
     //debug code
     let path = env::current_dir().unwrap();
     println!("The current directory is {}", path.display());
@@ -184,11 +242,9 @@ fn main() {
     println!("content");
     println!("{:?}", content);
 
-    let img_check = image::open("./resources/icons8-checked-50.png").unwrap();
-
-    //debug code
-    println!("dimensions {:?}", img_check.dimensions());
-    println!("{:?}", img_check.color());
+    let img_right = image::open("./resources/icons8-checked-50.png").unwrap();
+	let img_wrong = image::open("./resources/icons8-cancel-50.png").unwrap();
+	let img_continue = image::open("./resources/icons8-circled-right-50.png").unwrap();
 
     let vert_src = {
         let mut file = std::fs::File::open("./resources/vert.glsl").unwrap();
@@ -222,7 +278,7 @@ fn main() {
     let mut verts: Vec<GLfloat> = Vec::new();
 
     //pos
-    verts.push(-0.5 / 2.0);
+    verts.push(-0.5);
     verts.push(-0.5);
     //color
     verts.push(1.0);
@@ -233,7 +289,7 @@ fn main() {
     verts.push(1.0);
 
     //pos
-    verts.push(0.5 / 2.0);
+    verts.push(0.5);
     verts.push(-0.5);
     //color
     verts.push(0.0);
@@ -244,7 +300,7 @@ fn main() {
     verts.push(1.0);
 
     //pos
-    verts.push(-0.5 / 2.0);
+    verts.push(-0.5);
     verts.push(0.5);
     //color
     verts.push(0.0);
@@ -255,7 +311,7 @@ fn main() {
     verts.push(0.0);
 
     //pos
-    verts.push(-0.5 / 2.0);
+    verts.push(-0.5);
     verts.push(0.5);
     //color
     verts.push(0.0);
@@ -266,7 +322,7 @@ fn main() {
     verts.push(0.0);
 
     //pos
-    verts.push(0.5 / 2.0);
+    verts.push(0.5);
     verts.push(0.5);
     //color
     verts.push(1.0);
@@ -277,7 +333,7 @@ fn main() {
     verts.push(0.0);
 
     //pos
-    verts.push(0.5 / 2.0);
+    verts.push(0.5);
     verts.push(-0.5);
     //color
     verts.push(0.0);
@@ -294,7 +350,7 @@ fn main() {
         setup_shaders(&vert_src, &frag_src);
         vertex_buffer_setup(&mut vert_buffer, &verts);
         texture_setup(&mut texture_buffer);
-        set_texture_data(&img_check);
+        set_texture_data(&image);
     }
 
     while !window.should_close() {
