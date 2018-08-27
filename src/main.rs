@@ -1,9 +1,11 @@
 extern crate csv;
 extern crate gl;
 extern crate glfw;
+extern crate image;
 
 use gl::types::*;
 use glfw::Context;
+use image::GenericImage;
 use std::env;
 use std::io::Read;
 
@@ -76,6 +78,73 @@ unsafe fn setup_shaders(vert_src: &String, frag_src: &String) {
     gl::UseProgram(shader);
 }
 
+unsafe fn texture_setup(texture: &mut GLuint) {
+    gl::GenTextures(1, texture);
+    gl::BindTexture(gl::TEXTURE_2D, *texture);
+
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::NEAREST as i32);
+    gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
+}
+
+unsafe fn set_texture_data(image: &image::DynamicImage) {
+    gl::TexImage2D(
+        gl::TEXTURE_2D,
+        0,
+        gl::RGBA as i32,
+        image.width() as i32,
+        image.height() as i32,
+        0,
+        gl::RGBA,
+        gl::UNSIGNED_BYTE,
+        image.raw_pixels().as_ptr() as *const std::os::raw::c_void,
+    );
+}
+
+unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint, verts: &Vec<GLfloat>) {
+    let mut vao: GLuint = 0;
+    gl::GenVertexArrays(1, &mut vao);
+    gl::BindVertexArray(vao);
+
+    gl::ClearColor(0.95, 0.95, 0.95, 0.0);
+    gl::Enable(gl::DEPTH_TEST);
+
+    gl::GenBuffers(1, vert_buffer as *mut GLuint);
+    gl::BindBuffer(gl::ARRAY_BUFFER, *vert_buffer);
+
+    println!("vert_buffer:{}", vert_buffer);
+
+    gl::EnableVertexAttribArray(0);
+    gl::EnableVertexAttribArray(1);
+    gl::EnableVertexAttribArray(2);
+
+    gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, 7 * 4, std::ptr::null());
+    gl::VertexAttribPointer(
+        1,
+        3,
+        gl::FLOAT,
+        gl::FALSE,
+        7 * 4,
+        std::mem::transmute::<u64, *const std::os::raw::c_void>(2 * 4),
+    );
+    gl::VertexAttribPointer(
+        2,
+        2,
+        gl::FLOAT,
+        gl::FALSE,
+        7 * 4,
+        std::mem::transmute::<u64, *const std::os::raw::c_void>(5 * 4),
+    );
+
+    gl::BufferData(
+        gl::ARRAY_BUFFER,
+        4 * verts.len() as isize,
+        verts.as_ptr() as *const std::os::raw::c_void,
+        gl::STATIC_DRAW,
+    );
+}
+
 fn main() {
     //debug code
     let path = env::current_dir().unwrap();
@@ -110,6 +179,12 @@ fn main() {
     println!("content");
     println!("{:?}", content);
 
+    let img_check = image::open("./resources/icons8-checked-50.png").unwrap();
+
+    //debug code
+    println!("dimensions {:?}", img_check.dimensions());
+    println!("{:?}", img_check.color());
+
     let vert_src = {
         let mut file = std::fs::File::open("./resources/vert.glsl").unwrap();
         let mut src = String::new();
@@ -137,69 +212,88 @@ fn main() {
     gl::load_with(|s| window.get_proc_address(s) as *const std::os::raw::c_void);
 
     let mut vert_buffer: GLuint = 0;
-    // let mut color_buffer: GLuint = 0;
+    let mut texture_buffer: GLuint = 0;
 
-    let mut verts: Vec<GLfloat> = Vec::with_capacity(3 * 3);
+    let mut verts: Vec<GLfloat> = Vec::new();
 
+    //pos
+    verts.push(-0.5/2.0);
     verts.push(-0.5);
-    verts.push(-0.5);
-
+    //color
     verts.push(1.0);
     verts.push(0.0);
     verts.push(0.0);
+    //tex coord
+    verts.push(0.0);
+    verts.push(1.0);
 
+    //pos
+    verts.push(0.5/2.0);
+    verts.push(-0.5);
+    //color
+    verts.push(0.0);
+    verts.push(1.0);
+    verts.push(0.0);
+    //tex coord
+    verts.push(1.0);
+    verts.push(1.0);
+
+    //pos
+    verts.push(-0.5/2.0);
     verts.push(0.5);
-    verts.push(-0.5);
-
+    //color
+    verts.push(0.0);
     verts.push(0.0);
     verts.push(1.0);
+    //tex coord
     verts.push(0.0);
-
-    verts.push(-0.5);
+    verts.push(0.0);
+	
+	
+	
+	//pos
+    verts.push(-0.5/2.0);
     verts.push(0.5);
-
+    //color
     verts.push(0.0);
     verts.push(0.0);
     verts.push(1.0);
+    //tex coord
+    verts.push(0.0);
+    verts.push(0.0);
 
-    println!("number of tris:{}", verts.len());
+    //pos
+    verts.push(0.5/2.0);
+    verts.push(0.5);
+    //color
+    verts.push(1.0);
+    verts.push(1.0);
+    verts.push(1.0);
+    //tex coord
+    verts.push(1.0);
+    verts.push(0.0);
+
+    //pos
+    verts.push(0.5/2.0);
+    verts.push(-0.5);
+    //color
+    verts.push(0.0);
+    verts.push(1.0);
+    verts.push(0.0);
+    //tex coord
+    verts.push(1.0);
+    verts.push(1.0);
+	
+	
+	
+
+    println!("number of verts:{}", verts.len());
 
     unsafe {
-        let mut vao: GLuint = 0;
-        gl::GenVertexArrays(1, &mut vao);
-        gl::BindVertexArray(vao);
-
-        gl::ClearColor(0.95, 0.95, 0.95, 0.0);
-        gl::Enable(gl::DEPTH_TEST);
-
         setup_shaders(&vert_src, &frag_src);
-
-        gl::GenBuffers(1, &mut vert_buffer as *mut GLuint);
-        gl::BindBuffer(gl::ARRAY_BUFFER, vert_buffer);
-
-        println!("vert_buffer:{}", vert_buffer);
-
-        gl::EnableVertexAttribArray(0);
-        gl::EnableVertexAttribArray(1);
-
-        print_gl_error();
-        gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, 4 * 5, std::ptr::null());
-        gl::VertexAttribPointer(
-            1,
-            3,
-            gl::FLOAT,
-            gl::FALSE,
-            4 * 5,
-            std::mem::transmute::<u64, *const std::os::raw::c_void>(2 * 4),
-        );
-        print_gl_error();
-
-        gl::BufferData(
-            gl::ARRAY_BUFFER,
-            4 * verts.len() as isize,
-            verts.as_ptr() as *const std::os::raw::c_void,
-            gl::STATIC_DRAW,
-        );
+        vertex_buffer_setup(&mut vert_buffer, &verts);
+        texture_setup(&mut texture_buffer);
+        set_texture_data(&img_check);
     }
 
     while !window.should_close() {
@@ -215,7 +309,7 @@ fn main() {
         };
         unsafe {
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            gl::DrawArrays(gl::TRIANGLES, 0, 3);
+            gl::DrawArrays(gl::TRIANGLES, 0, 6);
         }
         window.swap_buffers();
         glfw.poll_events();
