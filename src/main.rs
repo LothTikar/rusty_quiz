@@ -7,9 +7,23 @@ extern crate rusttype;
 use gl::types::*;
 use glfw::Context;
 use image::{DynamicImage, GenericImage, Rgba};
+use rusttype::{point, Font, Scale};
 use std::env;
 use std::io::Read;
-use rusttype::{point, Font, Scale};
+
+struct Header {
+    number_of_hints: i32,
+    questions: Vec<String>,
+    rendered_questions: Vec<image::DynamicImage>,
+}
+
+struct Slide {
+    image: Option<image::DynamicImage>,
+    hints: Vec<String>,
+    answers: Vec<String>,
+    rendered_hints: Vec<image::DynamicImage>,
+    rendered_answers: Vec<image::DynamicImage>,
+}
 
 fn print_gl_error() {
     println!(
@@ -104,6 +118,15 @@ unsafe fn set_texture_data(image: &image::DynamicImage) {
     );
 }
 
+unsafe fn set_vertex_data(verts: &Vec<GLfloat>) {
+    gl::BufferData(
+        gl::ARRAY_BUFFER,
+        4 * verts.len() as isize,
+        verts.as_ptr() as *const std::os::raw::c_void,
+        gl::STATIC_DRAW,
+    );
+}
+
 unsafe fn opengl_setup() {
     let mut vao: GLuint = 0;
     gl::GenVertexArrays(1, &mut vao);
@@ -143,35 +166,17 @@ unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint, verts: &Vec<GLfloat>) {
         7 * 4,
         std::mem::transmute::<u64, *const std::os::raw::c_void>(5 * 4),
     );
-
-    gl::BufferData(
-        gl::ARRAY_BUFFER,
-        4 * verts.len() as isize,
-        verts.as_ptr() as *const std::os::raw::c_void,
-        gl::STATIC_DRAW,
-    );
 }
 
-fn main() {
-    // Load the font
-    let font_data = std::fs::read("./resources/Ubuntu-R.ttf").unwrap();
-    // This only succeeds if collection consists of one font
-    let font = Font::from_bytes(font_data.as_slice()).expect("Error constructing Font");
-
-    // The font size to use
-    let scale = Scale::uniform(32.0);
-
-    // The text to render
-    let text = "This is RustType rendered into a png!";
+fn render_text(font: &Font, scale: f32, text: &str) -> image::DynamicImage {
+    let scale = Scale::uniform(scale);
 
     let v_metrics = font.v_metrics(scale);
 
-    // layout the glyphs in a line with 20 pixels padding
     let glyphs: Vec<_> = font
-        .layout(text, scale, point(20.0, 20.0 + v_metrics.ascent))
+        .layout(text, scale, point(0.0, 0.0 + v_metrics.ascent))
         .collect();
 
-    // work out the layout size
     let glyphs_height = (v_metrics.ascent - v_metrics.descent).ceil() as u32;
     let glyphs_width = {
         let min_x = glyphs
@@ -185,19 +190,14 @@ fn main() {
         (max_x - min_x) as u32
     };
 
-    // Create a new rgba image with some padding
-    let mut image = DynamicImage::new_rgba8(glyphs_width + 40, glyphs_height + 40);
+    let mut image = DynamicImage::new_rgba8(glyphs_width, glyphs_height);
 
-    // Loop through the glyphs in the text, positing each one on a line
     for glyph in glyphs {
         if let Some(bounding_box) = glyph.pixel_bounding_box() {
-            // Draw the glyph into the image per-pixel by using the draw closure
             glyph.draw(|x, y, v| {
                 image.put_pixel(
-                    // Offset the position by the glyph bounding box
                     x + bounding_box.min.x as u32,
                     y + bounding_box.min.y as u32,
-                    // Turn the coverage into an alpha value
                     Rgba {
                         data: [255, 255, 255, (v * 255.0) as u8],
                     },
@@ -206,22 +206,37 @@ fn main() {
         }
     }
 
+    image
+}
 
-
-
-    //debug code
-    let path = env::current_dir().unwrap();
-    println!("The current directory is {}", path.display());
+fn main() {
+    let font_data = std::fs::read("./resources/Ubuntu-R.ttf").unwrap();
+    let font = Font::from_bytes(font_data.as_slice()).expect("Error constructing Font");
 
     let mut csv_reader = {
         let args: Vec<String> = env::args().collect();
         csv::Reader::from_path(&args[1]).unwrap()
     };
 
-    let mut headers: Vec<String> = Vec::new();
+    let mut header = Header {
+        number_of_hints: 0,
+        questions: Vec::new(),
+        rendered_questions: Vec::new(),
+    };
 
-    for header in csv_reader.headers().unwrap().iter() {
-        headers.push(header.to_string());
+    //It expects the first item to be "image file name." Hints are expected to only be placed immedently after "image file name." Everything after hints is expected to be a question.
+    for header_item in csv_reader.headers().unwrap().iter() {
+        let header_item = header_item.to_string();
+        match header_item.as_str() {
+            "hint" => header.number_of_hints += 1,
+            "image file name" => (),
+            _ => {
+                header
+                    .rendered_questions
+                    .push(render_text(&font, 32.0, header_item.as_str()));
+                header.questions.push(header_item);
+            }
+        }
     }
 
     let mut content: Vec<Vec<String>> = Vec::new();
@@ -236,15 +251,9 @@ fn main() {
         });
     }
 
-    //debug code
-    println!("header");
-    println!("{:?}", headers);
-    println!("content");
-    println!("{:?}", content);
-
     let img_right = image::open("./resources/icons8-checked-50.png").unwrap();
-	let img_wrong = image::open("./resources/icons8-cancel-50.png").unwrap();
-	let img_continue = image::open("./resources/icons8-circled-right-50.png").unwrap();
+    let img_wrong = image::open("./resources/icons8-cancel-50.png").unwrap();
+    let img_continue = image::open("./resources/icons8-circled-right-50.png").unwrap();
 
     let vert_src = {
         let mut file = std::fs::File::open("./resources/vert.glsl").unwrap();
@@ -346,11 +355,12 @@ fn main() {
     println!("number of verts:{}", verts.len());
 
     unsafe {
-		opengl_setup();
+        opengl_setup();
         setup_shaders(&vert_src, &frag_src);
         vertex_buffer_setup(&mut vert_buffer, &verts);
         texture_setup(&mut texture_buffer);
-        set_texture_data(&image);
+        set_vertex_data(&verts);
+        set_texture_data(header.rendered_questions.last().unwrap());
     }
 
     while !window.should_close() {
