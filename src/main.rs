@@ -8,26 +8,33 @@ use std::env;
 fn main() {
     let mut csv_reader = {
         let args: Vec<String> = env::args().collect();
-        println!("{:?}", args);
-        if args.len() < 2 {
-            println!("Error: No filename for quiz given!");
-            return;
-        }
-
         csv::Reader::from_path(&args[1]).unwrap()
     };
 
-	//Test code
-	println!("header");
-	for result in csv_reader.headers() {
-        println!("{:?}", result);
+    let mut headers: Vec<String> = Vec::new();
+
+    for header in csv_reader.headers().unwrap().iter() {
+        headers.push(header.to_string());
     }
-	
-	println!("content");
-	for result in csv_reader.records() {
-        println!("{:?}", result.unwrap());
+
+    let mut content: Vec<Vec<String>> = Vec::new();
+
+    for result in csv_reader.records() {
+        content.push({
+            let mut record: Vec<String> = Vec::new();
+            for header in result.unwrap().iter() {
+                record.push(header.to_string());
+            }
+            record
+        });
     }
-	
+
+    //Test code
+    println!("header");
+    println!("{:?}", headers);
+    println!("content");
+    println!("{:?}", content);
+
     let mut glfw = glfw::init(glfw::FAIL_ON_ERRORS).unwrap();
     glfw.window_hint(glfw::WindowHint::ContextVersion(3, 3));
     glfw.window_hint(glfw::WindowHint::OpenGlProfile(
