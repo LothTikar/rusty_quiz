@@ -25,9 +25,115 @@ struct Slide {
     rendered_answers: Vec<RgbaImage>,
 }
 
-//All function parameters are expected to be in pixels.
-fn add_text_vertices(
+fn add_colored_box(
     window_position: (f32, f32),
+	layer: f32,
+    color: (f32, f32, f32),
+    box_size: (f32, f32),
+    window_size: (f32, f32),
+    verts: &mut Vec<GLfloat>,
+) {
+    let pos = (
+        (window_position.0 * 2.0) / window_size.0 - 1.0,
+        (window_position.1 * -2.0) / window_size.1 + 1.0,
+    );
+    let box_size = (
+        (box_size.0 * 2.0) / window_size.0,
+        (box_size.1 * -2.0) / window_size.1,
+    );
+
+    //triangle 1
+    //pos
+    verts.push(pos.0);
+    verts.push(pos.1);
+    verts.push(layer);
+    //color
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
+    //tex coord
+    verts.push(0.0);
+    verts.push(0.0);
+	//enable texture
+    verts.push(0.0);
+
+    //pos
+    verts.push(pos.0 + box_size.0);
+    verts.push(pos.1);
+    verts.push(layer);
+    //color
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
+    //tex coord
+    verts.push(0.0);
+    verts.push(0.0);
+	//enable texture
+    verts.push(0.0);
+
+    //pos
+    verts.push(pos.0 + box_size.0);
+    verts.push(pos.1 + box_size.1);
+    verts.push(layer);
+    //color
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
+    //tex coord
+    verts.push(0.0);
+    verts.push(0.0);
+	//enable texture
+    verts.push(0.0);
+
+    //triangle 2
+    //pos
+    verts.push(pos.0);
+    verts.push(pos.1);
+    verts.push(layer);
+    //color
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
+    //tex coord
+    verts.push(0.0);
+    verts.push(0.0);
+	//enable texture
+    verts.push(0.0);
+
+    //pos
+    verts.push(pos.0);
+    verts.push(pos.1 + box_size.1);
+    verts.push(layer);
+    //color
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
+    //tex coord
+    verts.push(0.0);
+    verts.push(0.0);
+	//enable texture
+    verts.push(0.0);
+
+    //pos
+    verts.push(pos.0 + box_size.0);
+    verts.push(pos.1 + box_size.1);
+    verts.push(layer);
+    //color
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
+    //tex coord
+    verts.push(0.0);
+    verts.push(0.0);
+	//enable texture
+    verts.push(0.0);
+}
+	
+
+//All function parameters are expected to be in pixels.
+fn add_textured_box(
+    window_position: (f32, f32),
+	layer: f32,
     texture_offset: (f32, f32),
     color: (f32, f32, f32),
     text_size: (f32, f32),
@@ -53,6 +159,7 @@ fn add_text_vertices(
     //pos
     verts.push(pos.0);
     verts.push(pos.1);
+    verts.push(layer);
     //color
     verts.push(color.0);
     verts.push(color.1);
@@ -60,10 +167,13 @@ fn add_text_vertices(
     //tex coord
     verts.push(offset.0);
     verts.push(offset.1);
+	//enable texture
+	verts.push(1.0);
 
     //pos
     verts.push(pos.0 + box_size.0);
     verts.push(pos.1);
+    verts.push(layer);
     //color
     verts.push(color.0);
     verts.push(color.1);
@@ -71,10 +181,13 @@ fn add_text_vertices(
     //tex coord
     verts.push(offset.0 + text_size.0);
     verts.push(offset.1);
+	//enable texture
+	verts.push(1.0);
 
     //pos
     verts.push(pos.0 + box_size.0);
     verts.push(pos.1 + box_size.1);
+    verts.push(layer);
     //color
     verts.push(color.0);
     verts.push(color.1);
@@ -82,11 +195,14 @@ fn add_text_vertices(
     //tex coord
     verts.push(offset.0 + text_size.0);
     verts.push(offset.1 + text_size.1);
+	//enable texture
+	verts.push(1.0);
 
     //triangle 2
     //pos
     verts.push(pos.0);
     verts.push(pos.1);
+    verts.push(layer);
     //color
     verts.push(color.0);
     verts.push(color.1);
@@ -94,10 +210,13 @@ fn add_text_vertices(
     //tex coord
     verts.push(offset.0);
     verts.push(offset.1);
+	//enable texture
+	verts.push(1.0);
 
     //pos
     verts.push(pos.0);
     verts.push(pos.1 + box_size.1);
+    verts.push(layer);
     //color
     verts.push(color.0);
     verts.push(color.1);
@@ -105,10 +224,13 @@ fn add_text_vertices(
     //tex coord
     verts.push(offset.0);
     verts.push(offset.1 + text_size.1);
+	//enable texture
+	verts.push(1.0);
 
     //pos
     verts.push(pos.0 + box_size.0);
     verts.push(pos.1 + box_size.1);
+    verts.push(layer);
     //color
     verts.push(color.0);
     verts.push(color.1);
@@ -116,6 +238,8 @@ fn add_text_vertices(
     //tex coord
     verts.push(offset.0 + text_size.0);
     verts.push(offset.1 + text_size.1);
+	//enable texture
+	verts.push(1.0);
 }
 
 fn print_gl_error() {
@@ -227,6 +351,7 @@ unsafe fn opengl_setup() {
 
     gl::ClearColor(0.95, 0.95, 0.95, 0.0);
     gl::Enable(gl::DEPTH_TEST);
+	gl::DepthFunc(gl::LESS);
 
     gl::Enable(gl::BLEND);
     gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
@@ -239,23 +364,32 @@ unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint) {
     gl::EnableVertexAttribArray(0);
     gl::EnableVertexAttribArray(1);
     gl::EnableVertexAttribArray(2);
+    gl::EnableVertexAttribArray(3);
 
-    gl::VertexAttribPointer(0, 2, gl::FLOAT, gl::FALSE, 7 * 4, std::ptr::null());
+    gl::VertexAttribPointer(0, 3, gl::FLOAT, gl::FALSE, 9 * 4, std::ptr::null());
     gl::VertexAttribPointer(
         1,
         3,
         gl::FLOAT,
         gl::FALSE,
-        7 * 4,
-        std::mem::transmute::<u64, *const std::os::raw::c_void>(2 * 4),
+        9 * 4,
+        std::mem::transmute::<u64, *const std::os::raw::c_void>(3 * 4),
     );
     gl::VertexAttribPointer(
         2,
         2,
         gl::FLOAT,
         gl::FALSE,
-        7 * 4,
-        std::mem::transmute::<u64, *const std::os::raw::c_void>(5 * 4),
+        9 * 4,
+        std::mem::transmute::<u64, *const std::os::raw::c_void>(6 * 4),
+    );
+    gl::VertexAttribPointer(
+        3,
+        1,
+        gl::FLOAT,
+        gl::FALSE,
+        9 * 4,
+        std::mem::transmute::<u64, *const std::os::raw::c_void>(8 * 4),
     );
 }
 
@@ -425,10 +559,10 @@ fn main() {
                 offsets.push((my_width, texture_height));
                 my_width += image.width();
                 my_height = my_height.max(image.height());
+				test_size = (image.width() as f32, my_height as f32);
             }
             texture_width = texture_width.max(my_width);
             texture_height += my_height;
-            test_size = (my_width as f32, my_height as f32);
         }
         println!("{}, {}", texture_width, texture_height);
         let mut image = RgbaImage::new(1000, 500);
@@ -468,12 +602,31 @@ fn main() {
         };
 
         let mut verts: Vec<GLfloat> = Vec::new();
-
-        add_text_vertices(
+		
+		add_colored_box(
             cursor_pos,
-            (0.0, 0.0),
-            (0.0, 1.0, 0.1),
-            (100.0, 40.0),
+			0.5,
+            (0.2, 0.2, 0.2),
+            test_size,
+            window_size,
+            &mut verts,
+        );
+		
+		add_colored_box(
+            (cursor_pos.0+2.0,cursor_pos.1+2.0),
+			0.25,
+            (0.6, 0.6, 0.6),
+            (test_size.0-4.0,test_size.1-4.0),
+            window_size,
+            &mut verts,
+        );
+		
+        add_textured_box(
+            cursor_pos,
+			0.0,
+            test_offset,
+            (1.0, 1.0, 1.0),
+            test_size,
             window_size,
             (texture.width() as f32, texture.height() as f32),
             &mut verts,
@@ -482,7 +635,7 @@ fn main() {
         unsafe {
             set_vertex_data(&verts);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            gl::DrawArrays(gl::TRIANGLES, 0, 6);
+            gl::DrawArrays(gl::TRIANGLES, 0, 6*3);
         }
         window.swap_buffers();
         glfw.poll_events();
