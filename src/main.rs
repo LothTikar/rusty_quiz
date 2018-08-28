@@ -2,11 +2,13 @@ extern crate csv;
 extern crate gl;
 extern crate glfw;
 extern crate image;
+extern crate rand;
 extern crate rusttype;
 
 use gl::types::*;
 use glfw::Context;
 use image::{Rgba, RgbaImage};
+use rand::{thread_rng, Rng};
 use rusttype::{point, Font, Scale};
 use std::env;
 use std::io::Read;
@@ -25,9 +27,18 @@ struct Slide {
     rendered_answers: Vec<RgbaImage>,
 }
 
+struct SlideRenderInfo {
+    image_offset: (f32, f32),
+    hint_offsets: Vec<(f32, f32)>,
+    answers_offsets: Vec<(f32, f32)>,
+    right_offset: (f32, f32),
+    wrong_offset: (f32, f32),
+    continue_offset: (f32, f32),
+}
+
 fn add_colored_box(
     window_position: (f32, f32),
-	layer: f32,
+    layer: f32,
     color: (f32, f32, f32),
     box_size: (f32, f32),
     window_size: (f32, f32),
@@ -54,7 +65,7 @@ fn add_colored_box(
     //tex coord
     verts.push(0.0);
     verts.push(0.0);
-	//enable texture
+    //enable texture
     verts.push(0.0);
 
     //pos
@@ -68,7 +79,7 @@ fn add_colored_box(
     //tex coord
     verts.push(0.0);
     verts.push(0.0);
-	//enable texture
+    //enable texture
     verts.push(0.0);
 
     //pos
@@ -82,7 +93,7 @@ fn add_colored_box(
     //tex coord
     verts.push(0.0);
     verts.push(0.0);
-	//enable texture
+    //enable texture
     verts.push(0.0);
 
     //triangle 2
@@ -97,7 +108,7 @@ fn add_colored_box(
     //tex coord
     verts.push(0.0);
     verts.push(0.0);
-	//enable texture
+    //enable texture
     verts.push(0.0);
 
     //pos
@@ -111,7 +122,7 @@ fn add_colored_box(
     //tex coord
     verts.push(0.0);
     verts.push(0.0);
-	//enable texture
+    //enable texture
     verts.push(0.0);
 
     //pos
@@ -125,15 +136,14 @@ fn add_colored_box(
     //tex coord
     verts.push(0.0);
     verts.push(0.0);
-	//enable texture
+    //enable texture
     verts.push(0.0);
 }
-	
 
 //All function parameters are expected to be in pixels.
 fn add_textured_box(
     window_position: (f32, f32),
-	layer: f32,
+    layer: f32,
     texture_offset: (f32, f32),
     color: (f32, f32, f32),
     text_size: (f32, f32),
@@ -167,8 +177,8 @@ fn add_textured_box(
     //tex coord
     verts.push(offset.0);
     verts.push(offset.1);
-	//enable texture
-	verts.push(1.0);
+    //enable texture
+    verts.push(1.0);
 
     //pos
     verts.push(pos.0 + box_size.0);
@@ -181,8 +191,8 @@ fn add_textured_box(
     //tex coord
     verts.push(offset.0 + text_size.0);
     verts.push(offset.1);
-	//enable texture
-	verts.push(1.0);
+    //enable texture
+    verts.push(1.0);
 
     //pos
     verts.push(pos.0 + box_size.0);
@@ -195,8 +205,8 @@ fn add_textured_box(
     //tex coord
     verts.push(offset.0 + text_size.0);
     verts.push(offset.1 + text_size.1);
-	//enable texture
-	verts.push(1.0);
+    //enable texture
+    verts.push(1.0);
 
     //triangle 2
     //pos
@@ -210,8 +220,8 @@ fn add_textured_box(
     //tex coord
     verts.push(offset.0);
     verts.push(offset.1);
-	//enable texture
-	verts.push(1.0);
+    //enable texture
+    verts.push(1.0);
 
     //pos
     verts.push(pos.0);
@@ -224,8 +234,8 @@ fn add_textured_box(
     //tex coord
     verts.push(offset.0);
     verts.push(offset.1 + text_size.1);
-	//enable texture
-	verts.push(1.0);
+    //enable texture
+    verts.push(1.0);
 
     //pos
     verts.push(pos.0 + box_size.0);
@@ -238,8 +248,8 @@ fn add_textured_box(
     //tex coord
     verts.push(offset.0 + text_size.0);
     verts.push(offset.1 + text_size.1);
-	//enable texture
-	verts.push(1.0);
+    //enable texture
+    verts.push(1.0);
 }
 
 fn print_gl_error() {
@@ -351,7 +361,7 @@ unsafe fn opengl_setup() {
 
     gl::ClearColor(0.95, 0.95, 0.95, 0.0);
     gl::Enable(gl::DEPTH_TEST);
-	gl::DepthFunc(gl::LESS);
+    gl::DepthFunc(gl::LESS);
 
     gl::Enable(gl::BLEND);
     gl::BlendFunc(gl::SRC_ALPHA, gl::ONE_MINUS_SRC_ALPHA);
@@ -438,6 +448,8 @@ fn main() {
     let font_data = std::fs::read("./resources/Ubuntu-R.ttf").expect("Unable to open font file!");
     let font = Font::from_bytes(font_data.as_slice()).expect("Error constructing Font");
 
+    let finish_text = render_text(&font, 32.0, "You've completed all questions!");
+
     let mut csv_reader = {
         let args: Vec<String> = env::args().collect();
         csv::Reader::from_path(&args[1]).expect("Quiz file processing error!")
@@ -510,6 +522,8 @@ fn main() {
         slides.push(slide);
     }
 
+    thread_rng().shuffle(&mut slides);
+
     let slides = slides;
 
     let img_right = image::open("./resources/icons8-checked-50.png").unwrap();
@@ -559,7 +573,7 @@ fn main() {
                 offsets.push((my_width, texture_height));
                 my_width += image.width();
                 my_height = my_height.max(image.height());
-				test_size = (image.width() as f32, my_height as f32);
+                test_size = (image.width() as f32, my_height as f32);
             }
             texture_width = texture_width.max(my_width);
             texture_height += my_height;
@@ -589,6 +603,10 @@ fn main() {
 
     print_gl_error();
 
+    let mut slides_iter = slides.iter();
+    let mut current_slide = slides_iter.next();
+    let mut correct_answers: Vec<bool> = Vec::new();
+
     while !window.should_close() {
         let window_size = window.get_size();
         let window_size = (window_size.0 as f32, window_size.1 as f32);
@@ -601,29 +619,69 @@ fn main() {
             )
         };
 
+        let mut move_to_next = true;
+
+        for i in correct_answers {
+            if (!i) {
+                move_to_next = false;
+            }
+        }
+
+        if move_to_next {
+            current_slide = slides_iter.next();
+            if let Some(ref current_slide) = current_slide {
+				
+			}
+        }
+
         let mut verts: Vec<GLfloat> = Vec::new();
-		
-		add_colored_box(
+
+        if let Some(ref current_slide) = current_slide {
+
+        } else {
+            let box_center = (
+                finish_text.width() as f32 / 2.0,
+                finish_text.height() as f32 / 2.0,
+            );
+            add_textured_box(
+                (
+                    window_size.0 / 2.0 - box_center.0,
+                    window_size.1 / 2.0 - box_center.1,
+                ),
+                0.0,
+                (0.0, 0.0),
+                (0.1, 0.1, 0.1),
+                (finish_text.width() as f32, finish_text.height() as f32),
+                window_size,
+                (finish_text.width() as f32, finish_text.height() as f32),
+                &mut verts,
+            );
+            unsafe {
+                set_texture_data(&finish_text);
+            }
+        }
+
+        add_colored_box(
             cursor_pos,
-			0.5,
+            0.5,
             (0.2, 0.2, 0.2),
             test_size,
             window_size,
             &mut verts,
         );
-		
-		add_colored_box(
-            (cursor_pos.0+2.0,cursor_pos.1+2.0),
-			0.25,
+
+        add_colored_box(
+            (cursor_pos.0 + 2.0, cursor_pos.1 + 2.0),
+            0.25,
             (0.6, 0.6, 0.6),
-            (test_size.0-4.0,test_size.1-4.0),
+            (test_size.0 - 4.0, test_size.1 - 4.0),
             window_size,
             &mut verts,
         );
-		
+
         add_textured_box(
             cursor_pos,
-			0.0,
+            0.0,
             test_offset,
             (1.0, 1.0, 1.0),
             test_size,
@@ -635,7 +693,7 @@ fn main() {
         unsafe {
             set_vertex_data(&verts);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            gl::DrawArrays(gl::TRIANGLES, 0, 6*3);
+            gl::DrawArrays(gl::TRIANGLES, 0, 6 * 3);
         }
         window.swap_buffers();
         glfw.poll_events();
