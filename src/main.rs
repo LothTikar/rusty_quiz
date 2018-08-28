@@ -172,7 +172,7 @@ fn render_text(font: &Font, scale: f32, text: &str) -> RgbaImage {
     let v_metrics = font.v_metrics(scale);
 
     let glyphs: Vec<_> = font
-        .layout(text, scale, point(0.0, 0.0 + v_metrics.ascent))
+        .layout(text, scale, point(10.0, 10.0 + v_metrics.ascent))
         .collect();
 
     let glyphs_height = (v_metrics.ascent - v_metrics.descent).ceil() as u32;
@@ -188,7 +188,7 @@ fn render_text(font: &Font, scale: f32, text: &str) -> RgbaImage {
         (max_x - min_x) as u32
     };
 
-    let mut image = RgbaImage::new(glyphs_width, glyphs_height);
+    let mut image = RgbaImage::new(glyphs_width+20, glyphs_height+20);
 
     for glyph in glyphs {
         if let Some(bounding_box) = glyph.pixel_bounding_box() {
@@ -231,7 +231,7 @@ fn main() {
             _ => {
                 header
                     .rendered_questions
-                    .push(render_text(&font, 32.0, header_item.as_str()));
+                    .push(render_text(&font, 15.0, header_item.as_str()));
                 header.questions.push(header_item);
             }
         }
@@ -264,13 +264,13 @@ fn main() {
                 _ if i <= header.number_of_hints => {
                     slide
                         .rendered_hints
-                        .push(render_text(&font, 32.0, value.as_str()));
+                        .push(render_text(&font, 15.0, value.as_str()));
                     slide.hints.push(value);
                 }
                 _ => {
                     slide
                         .rendered_answers
-                        .push(render_text(&font, 32.0, value.as_str()));
+                        .push(render_text(&font, 15.0, value.as_str()));
                     slide.answers.push(value);
                 }
             }
@@ -317,8 +317,8 @@ fn main() {
     let mut verts: Vec<GLfloat> = Vec::new();
 
     //pos
-    verts.push(-0.5);
-    verts.push(-0.5);
+    verts.push(-1.0);
+    verts.push(-1.0);
     //color
     verts.push(1.0);
     verts.push(0.0);
@@ -328,8 +328,8 @@ fn main() {
     verts.push(1.0);
 
     //pos
-    verts.push(0.5);
-    verts.push(-0.5);
+    verts.push(1.0);
+    verts.push(-1.0);
     //color
     verts.push(0.0);
     verts.push(1.0);
@@ -339,8 +339,8 @@ fn main() {
     verts.push(1.0);
 
     //pos
-    verts.push(-0.5);
-    verts.push(0.5);
+    verts.push(-1.0);
+    verts.push(1.0);
     //color
     verts.push(0.0);
     verts.push(0.0);
@@ -350,8 +350,8 @@ fn main() {
     verts.push(0.0);
 
     //pos
-    verts.push(-0.5);
-    verts.push(0.5);
+    verts.push(-1.0);
+    verts.push(1.0);
     //color
     verts.push(0.0);
     verts.push(0.0);
@@ -361,8 +361,8 @@ fn main() {
     verts.push(0.0);
 
     //pos
-    verts.push(0.5);
-    verts.push(0.5);
+    verts.push(1.0);
+    verts.push(1.0);
     //color
     verts.push(1.0);
     verts.push(1.0);
@@ -372,8 +372,8 @@ fn main() {
     verts.push(0.0);
 
     //pos
-    verts.push(0.5);
-    verts.push(-0.5);
+    verts.push(1.0);
+    verts.push(-1.0);
     //color
     verts.push(0.0);
     verts.push(1.0);
@@ -381,6 +381,35 @@ fn main() {
     //tex coord
     verts.push(1.0);
     verts.push(1.0);
+
+    let texture = {
+        let mut texture_width = 0;
+        let mut texture_height = 0;
+        let mut offsets: Vec<(u32, u32)> = Vec::new();
+        for slide in slides.iter() {
+            let mut my_width = 0;
+            let mut my_height = 0;
+            for image in slide.rendered_answers.iter() {
+				offsets.push((my_width, texture_height));
+                my_width += image.width();
+                my_height = my_height.max(image.height());
+            }
+            texture_width = texture_width.max(my_width);
+            texture_height += my_height;
+        }
+		println!("{}, {}", texture_width, texture_height);
+        let mut image = RgbaImage::new(1000, 500);
+        let mut offset_iter = offsets.iter();
+        for slide in slides.iter() {
+            for rendered_text in slide.rendered_answers.iter() {
+                let offset = offset_iter.next().unwrap();
+                for (x, y, pixel) in rendered_text.enumerate_pixels() {
+                    image.put_pixel(offset.0 + x, offset.1 + y, *pixel);
+                }
+            }
+        }
+        image
+    };
 
     unsafe {
         opengl_setup();
@@ -388,7 +417,7 @@ fn main() {
         vertex_buffer_setup(&mut vert_buffer);
         texture_setup(&mut texture_buffer);
         set_vertex_data(&verts);
-        set_texture_data(slides.last().as_ref().unwrap().image.as_ref().unwrap());
+        set_texture_data(&texture);
     }
 
     print_gl_error();
