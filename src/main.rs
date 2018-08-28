@@ -6,7 +6,7 @@ extern crate rusttype;
 
 use gl::types::*;
 use glfw::Context;
-use image::{DynamicImage, GenericImage, Rgba};
+use image::{Rgba, RgbaImage};
 use rusttype::{point, Font, Scale};
 use std::env;
 use std::io::Read;
@@ -14,15 +14,15 @@ use std::io::Read;
 struct Header {
     number_of_hints: i32,
     questions: Vec<String>,
-    rendered_questions: Vec<image::DynamicImage>,
+    rendered_questions: Vec<RgbaImage>,
 }
 
 struct Slide {
-    image: Option<image::DynamicImage>,
+    image: Option<RgbaImage>,
     hints: Vec<String>,
     answers: Vec<String>,
-    rendered_hints: Vec<image::DynamicImage>,
-    rendered_answers: Vec<image::DynamicImage>,
+    rendered_hints: Vec<RgbaImage>,
+    rendered_answers: Vec<RgbaImage>,
 }
 
 fn print_gl_error() {
@@ -104,10 +104,7 @@ unsafe fn texture_setup(texture: &mut GLuint) {
     gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::NEAREST as i32);
 }
 
-unsafe fn set_texture_data(image: &image::DynamicImage) {	
-	println!("dimensions {:?}", image.dimensions());
-    println!("{:?}", image.color());
-	
+unsafe fn set_texture_data(image: &RgbaImage) {
     gl::TexImage2D(
         gl::TEXTURE_2D,
         0,
@@ -117,7 +114,7 @@ unsafe fn set_texture_data(image: &image::DynamicImage) {
         0,
         gl::RGBA,
         gl::UNSIGNED_BYTE,
-        image.raw_pixels().as_ptr() as *const std::os::raw::c_void,
+        image.as_ptr() as *const std::os::raw::c_void,
     );
 }
 
@@ -146,8 +143,6 @@ unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint) {
     gl::GenBuffers(1, vert_buffer as *mut GLuint);
     gl::BindBuffer(gl::ARRAY_BUFFER, *vert_buffer);
 
-    println!("vert_buffer:{}", vert_buffer);
-
     gl::EnableVertexAttribArray(0);
     gl::EnableVertexAttribArray(1);
     gl::EnableVertexAttribArray(2);
@@ -171,7 +166,7 @@ unsafe fn vertex_buffer_setup(vert_buffer: &mut GLuint) {
     );
 }
 
-fn render_text(font: &Font, scale: f32, text: &str) -> image::DynamicImage {
+fn render_text(font: &Font, scale: f32, text: &str) -> RgbaImage {
     let scale = Scale::uniform(scale);
 
     let v_metrics = font.v_metrics(scale);
@@ -193,7 +188,7 @@ fn render_text(font: &Font, scale: f32, text: &str) -> image::DynamicImage {
         (max_x - min_x) as u32
     };
 
-    let mut image = DynamicImage::new_rgba8(glyphs_width, glyphs_height);
+    let mut image = RgbaImage::new(glyphs_width, glyphs_height);
 
     for glyph in glyphs {
         if let Some(bounding_box) = glyph.pixel_bounding_box() {
@@ -263,7 +258,7 @@ fn main() {
             match i {
                 0 => {
                     if !value.is_empty() {
-                        slide.image = Some(image::open(value).unwrap());
+                        slide.image = Some(image::open(value).unwrap().to_rgba());
                     }
                 }
                 _ if i <= header.number_of_hints => {
@@ -387,17 +382,13 @@ fn main() {
     verts.push(1.0);
     verts.push(1.0);
 
-    println!("number of verts:{}", verts.len());
-
     unsafe {
         opengl_setup();
         setup_shaders(&vert_src, &frag_src);
         vertex_buffer_setup(&mut vert_buffer);
         texture_setup(&mut texture_buffer);
         set_vertex_data(&verts);
-		println!("test1");
         set_texture_data(slides.last().as_ref().unwrap().image.as_ref().unwrap());
-		println!("test2");
     }
 
     print_gl_error();
