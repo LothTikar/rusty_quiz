@@ -25,6 +25,102 @@ struct Slide {
     rendered_answers: Vec<RgbaImage>,
 }
 
+//All function parameters are expected to be in pixels.
+fn add_text_vertices(
+    window_position: (f32, f32),
+    texture_offset: (f32, f32),
+    text_size: (f32, f32),
+    window_size: (f32, f32),
+    texture_size: (f32, f32),
+    verts: &mut Vec<GLfloat>,
+) {
+    let pos = (
+        (window_position.0 * 2.0) / window_size.0 - 1.0,
+        (window_position.1 * -2.0) / window_size.1 - 1.0,
+    );
+    let offset = (
+        texture_offset.0 / texture_size.0,
+        texture_offset.1 / texture_size.1,
+    );
+    let box_size = (
+        (text_size.0 * 2.0) / window_size.0 - 1.0,
+        (text_size.1 * -2.0) / window_size.1 - 1.0,
+    );
+    let text_size = (text_size.0 / texture_size.0, text_size.1 / texture_size.1);
+	println!("{:?}",pos);
+	println!("{:?}",offset);
+	println!("{:?}",box_size);
+	println!("{:?}",text_size);
+	
+    //triangle 1
+    //pos
+    verts.push(pos.0);
+    verts.push(pos.1);
+    //color
+    verts.push(1.0);
+    verts.push(1.0);
+    verts.push(1.0);
+    //tex coord
+    verts.push(offset.0);
+    verts.push(offset.1);
+
+    //pos
+    verts.push(pos.0 + box_size.0);
+    verts.push(pos.1);
+    //color
+    verts.push(1.0);
+    verts.push(1.0);
+    verts.push(1.0);
+    //tex coord
+    verts.push(offset.0 + text_size.0);
+    verts.push(offset.1);
+
+    //pos
+    verts.push(pos.0 + box_size.0);
+    verts.push(pos.1 + box_size.1);
+    //color
+    verts.push(1.0);
+    verts.push(1.0);
+    verts.push(1.0);
+    //tex coord
+    verts.push(offset.0 + text_size.0);
+    verts.push(offset.1 + text_size.1);
+
+    //triangle 2
+    //pos
+    verts.push(pos.0);
+    verts.push(pos.1);
+    //color
+    verts.push(1.0);
+    verts.push(1.0);
+    verts.push(1.0);
+    //tex coord
+    verts.push(offset.0);
+    verts.push(offset.1);
+
+    //pos
+    verts.push(pos.0);
+    verts.push(pos.1 + box_size.1);
+    //color
+    verts.push(1.0);
+    verts.push(1.0);
+    verts.push(1.0);
+    //tex coord
+    verts.push(offset.0);
+    verts.push(offset.1 + text_size.1);
+
+    //pos
+    verts.push(pos.0 + box_size.0);
+    verts.push(pos.1 + box_size.1);
+    //color
+    verts.push(1.0);
+    verts.push(1.0);
+    verts.push(1.0);
+    //tex coord
+    verts.push(offset.0 + text_size.0);
+    verts.push(offset.1 + text_size.1);
+}
+
 fn print_gl_error() {
     println!(
         "{}",
@@ -188,7 +284,7 @@ fn render_text(font: &Font, scale: f32, text: &str) -> RgbaImage {
         (max_x - min_x) as u32
     };
 
-    let mut image = RgbaImage::new(glyphs_width+20, glyphs_height+20);
+    let mut image = RgbaImage::new(glyphs_width + 20, glyphs_height + 20);
 
     for glyph in glyphs {
         if let Some(bounding_box) = glyph.pixel_bounding_box() {
@@ -314,73 +410,8 @@ fn main() {
     let mut vert_buffer: GLuint = 0;
     let mut texture_buffer: GLuint = 0;
 
-    let mut verts: Vec<GLfloat> = Vec::new();
-
-    //pos
-    verts.push(-1.0);
-    verts.push(-1.0);
-    //color
-    verts.push(1.0);
-    verts.push(0.0);
-    verts.push(0.0);
-    //tex coord
-    verts.push(0.0);
-    verts.push(1.0);
-
-    //pos
-    verts.push(1.0);
-    verts.push(-1.0);
-    //color
-    verts.push(0.0);
-    verts.push(1.0);
-    verts.push(0.0);
-    //tex coord
-    verts.push(1.0);
-    verts.push(1.0);
-
-    //pos
-    verts.push(-1.0);
-    verts.push(1.0);
-    //color
-    verts.push(0.0);
-    verts.push(0.0);
-    verts.push(1.0);
-    //tex coord
-    verts.push(0.0);
-    verts.push(0.0);
-
-    //pos
-    verts.push(-1.0);
-    verts.push(1.0);
-    //color
-    verts.push(0.0);
-    verts.push(0.0);
-    verts.push(1.0);
-    //tex coord
-    verts.push(0.0);
-    verts.push(0.0);
-
-    //pos
-    verts.push(1.0);
-    verts.push(1.0);
-    //color
-    verts.push(1.0);
-    verts.push(1.0);
-    verts.push(1.0);
-    //tex coord
-    verts.push(1.0);
-    verts.push(0.0);
-
-    //pos
-    verts.push(1.0);
-    verts.push(-1.0);
-    //color
-    verts.push(0.0);
-    verts.push(1.0);
-    verts.push(0.0);
-    //tex coord
-    verts.push(1.0);
-    verts.push(1.0);
+    let mut test_offset = (0.0, 0.0);
+    let mut test_size = (0.0, 0.0);
 
     let texture = {
         let mut texture_width = 0;
@@ -390,19 +421,21 @@ fn main() {
             let mut my_width = 0;
             let mut my_height = 0;
             for image in slide.rendered_answers.iter() {
-				offsets.push((my_width, texture_height));
+                offsets.push((my_width, texture_height));
                 my_width += image.width();
                 my_height = my_height.max(image.height());
             }
             texture_width = texture_width.max(my_width);
             texture_height += my_height;
+            test_size = (my_width as f32, my_height as f32);
         }
-		println!("{}, {}", texture_width, texture_height);
+        println!("{}, {}", texture_width, texture_height);
         let mut image = RgbaImage::new(1000, 500);
         let mut offset_iter = offsets.iter();
         for slide in slides.iter() {
             for rendered_text in slide.rendered_answers.iter() {
                 let offset = offset_iter.next().unwrap();
+                test_offset = (offset.0 as f32, offset.1 as f32);
                 for (x, y, pixel) in rendered_text.enumerate_pixels() {
                     image.put_pixel(offset.0 + x, offset.1 + y, *pixel);
                 }
@@ -416,7 +449,6 @@ fn main() {
         setup_shaders(&vert_src, &frag_src);
         vertex_buffer_setup(&mut vert_buffer);
         texture_setup(&mut texture_buffer);
-        set_vertex_data(&verts);
         set_texture_data(&texture);
     }
 
@@ -424,16 +456,39 @@ fn main() {
 
     while !window.should_close() {
         let window_size = window.get_size();
-        let window_size = (window_size.0 as f64, window_size.1 as f64);
+        let window_size = (window_size.0 as f32, window_size.1 as f32);
         let cursor_pos = {
             let mut pos = window.get_cursor_pos();
 
-            pos.0 = pos.0.max(0.0).min(500.0);
-            pos.1 = pos.1.max(0.0).min(500.0);
-
-            pos
+            (
+                pos.0.max(0.0).min(500.0) as f32,
+                pos.1.max(0.0).min(500.0) as f32,
+            )
         };
+
+        let mut verts: Vec<GLfloat> = Vec::new();
+        /*
+        add_text_vertices(
+            cursor_pos,
+            test_offset,
+            test_size,
+            window_size,
+            (texture.width() as f32, texture.height() as f32),
+            &mut verts,
+        );
+*/
+
+        add_text_vertices(
+            (50.0, 50.0),
+            (0.0, 0.0),
+            (100.0, 40.0),
+            window_size,
+            (texture.width() as f32, texture.height() as f32),
+            &mut verts,
+        );
+
         unsafe {
+            set_vertex_data(&verts);
             gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
             gl::DrawArrays(gl::TRIANGLES, 0, 6);
         }
