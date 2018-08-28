@@ -29,6 +29,7 @@ struct Slide {
 fn add_text_vertices(
     window_position: (f32, f32),
     texture_offset: (f32, f32),
+    color: (f32, f32, f32),
     text_size: (f32, f32),
     window_size: (f32, f32),
     texture_size: (f32, f32),
@@ -36,30 +37,26 @@ fn add_text_vertices(
 ) {
     let pos = (
         (window_position.0 * 2.0) / window_size.0 - 1.0,
-        (window_position.1 * -2.0) / window_size.1 - 1.0,
+        (window_position.1 * -2.0) / window_size.1 + 1.0,
     );
     let offset = (
         texture_offset.0 / texture_size.0,
         texture_offset.1 / texture_size.1,
     );
     let box_size = (
-        (text_size.0 * 2.0) / window_size.0 - 1.0,
-        (text_size.1 * -2.0) / window_size.1 - 1.0,
+        (text_size.0 * 2.0) / window_size.0,
+        (text_size.1 * -2.0) / window_size.1,
     );
     let text_size = (text_size.0 / texture_size.0, text_size.1 / texture_size.1);
-	println!("{:?}",pos);
-	println!("{:?}",offset);
-	println!("{:?}",box_size);
-	println!("{:?}",text_size);
-	
+
     //triangle 1
     //pos
     verts.push(pos.0);
     verts.push(pos.1);
     //color
-    verts.push(1.0);
-    verts.push(1.0);
-    verts.push(1.0);
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
     //tex coord
     verts.push(offset.0);
     verts.push(offset.1);
@@ -68,9 +65,9 @@ fn add_text_vertices(
     verts.push(pos.0 + box_size.0);
     verts.push(pos.1);
     //color
-    verts.push(1.0);
-    verts.push(1.0);
-    verts.push(1.0);
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
     //tex coord
     verts.push(offset.0 + text_size.0);
     verts.push(offset.1);
@@ -79,9 +76,9 @@ fn add_text_vertices(
     verts.push(pos.0 + box_size.0);
     verts.push(pos.1 + box_size.1);
     //color
-    verts.push(1.0);
-    verts.push(1.0);
-    verts.push(1.0);
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
     //tex coord
     verts.push(offset.0 + text_size.0);
     verts.push(offset.1 + text_size.1);
@@ -91,9 +88,9 @@ fn add_text_vertices(
     verts.push(pos.0);
     verts.push(pos.1);
     //color
-    verts.push(1.0);
-    verts.push(1.0);
-    verts.push(1.0);
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
     //tex coord
     verts.push(offset.0);
     verts.push(offset.1);
@@ -102,9 +99,9 @@ fn add_text_vertices(
     verts.push(pos.0);
     verts.push(pos.1 + box_size.1);
     //color
-    verts.push(1.0);
-    verts.push(1.0);
-    verts.push(1.0);
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
     //tex coord
     verts.push(offset.0);
     verts.push(offset.1 + text_size.1);
@@ -113,9 +110,9 @@ fn add_text_vertices(
     verts.push(pos.0 + box_size.0);
     verts.push(pos.1 + box_size.1);
     //color
-    verts.push(1.0);
-    verts.push(1.0);
-    verts.push(1.0);
+    verts.push(color.0);
+    verts.push(color.1);
+    verts.push(color.2);
     //tex coord
     verts.push(offset.0 + text_size.0);
     verts.push(offset.1 + text_size.1);
@@ -304,12 +301,12 @@ fn render_text(font: &Font, scale: f32, text: &str) -> RgbaImage {
 }
 
 fn main() {
-    let font_data = std::fs::read("./resources/Ubuntu-R.ttf").unwrap();
+    let font_data = std::fs::read("./resources/Ubuntu-R.ttf").expect("Unable to open font file!");
     let font = Font::from_bytes(font_data.as_slice()).expect("Error constructing Font");
 
     let mut csv_reader = {
         let args: Vec<String> = env::args().collect();
-        csv::Reader::from_path(&args[1]).unwrap()
+        csv::Reader::from_path(&args[1]).expect("Quiz file processing error!")
     };
 
     let mut header = Header {
@@ -354,7 +351,11 @@ fn main() {
             match i {
                 0 => {
                     if !value.is_empty() {
-                        slide.image = Some(image::open(value).unwrap().to_rgba());
+                        slide.image = Some(
+                            image::open(value)
+                                .expect("Unable to open slide image!")
+                                .to_rgba(),
+                        );
                     }
                 }
                 _ if i <= header.number_of_hints => {
@@ -461,26 +462,17 @@ fn main() {
             let mut pos = window.get_cursor_pos();
 
             (
-                pos.0.max(0.0).min(500.0) as f32,
-                pos.1.max(0.0).min(500.0) as f32,
+                (pos.0 as f32).max(0.0).min(window_size.0),
+                (pos.1 as f32).max(0.0).min(window_size.1),
             )
         };
 
         let mut verts: Vec<GLfloat> = Vec::new();
-        /*
-        add_text_vertices(
-            cursor_pos,
-            test_offset,
-            test_size,
-            window_size,
-            (texture.width() as f32, texture.height() as f32),
-            &mut verts,
-        );
-*/
 
         add_text_vertices(
-            (50.0, 50.0),
+            cursor_pos,
             (0.0, 0.0),
+            (0.0, 1.0, 0.1),
             (100.0, 40.0),
             window_size,
             (texture.width() as f32, texture.height() as f32),
