@@ -75,6 +75,10 @@ fn read_header(csv_reader: &mut csv::Reader<std::fs::File>) -> Header {
     header
 }
 
+fn construct_gui(header: &Header, slides: &Vec<Slides>){
+
+}
+
 fn main() {
     let mut csv_reader = {
         let args: Vec<String> = env::args().collect();
