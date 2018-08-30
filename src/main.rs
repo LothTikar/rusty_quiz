@@ -435,7 +435,7 @@ fn generate_question(
 fn generate_slide_texture(
     slide: &Slide,
     hint_image_sizes: &mut Vec<(f32, f32)>,
-    hint_offsets_y: &mut Vec<f32>,
+    hint_offsets: &mut Vec<(f32, f32)>,
     font: &Font,
 ) -> RgbaImage {
     let mut size: (f32, f32) = (0.0, 0.0);
@@ -443,18 +443,18 @@ fn generate_slide_texture(
 
     for h in slide.hints.iter() {
         let image = render_text(&font, 20.0, &h);
-        size.0 = size.0.max(image.width() as f32);
-        size.1 += image.height() as f32;
+        size.0 += image.width() as f32;
+        size.1 = size.1.max(image.height() as f32);
         hint_image_sizes.push((image.width() as f32, image.height() as f32));
         hint_images.push(image);
     }
 
-    let mut offset_y = 0;
+    let mut offset = (0, 0);
 
     if let Some(ref image) = slide.image {
-        size.0 = size.0.max(image.width() as f32);
-        size.1 += image.height() as f32;
-        offset_y += image.height();
+        size.0 += image.width() as f32;
+        size.1 = size.1.max(image.height() as f32);
+        offset.0 = image.width();
     }
     let mut texture = RgbaImage::new(size.0 as u32, size.1 as u32);
 
@@ -462,9 +462,9 @@ fn generate_slide_texture(
         copy_image_into_image(image, (0, 0), &mut texture);
     }
     for i in hint_images.iter() {
-        copy_image_into_image(&i, (0, offset_y), &mut texture);
-        hint_offsets_y.push(offset_y as f32);
-        offset_y += i.height();
+        copy_image_into_image(&i, offset, &mut texture);
+        hint_offsets.push((offset.0 as f32, offset.1 as f32));
+        offset.1 += i.height();
     }
     texture
 }
@@ -513,7 +513,7 @@ fn main() {
     ));
 
     let mut window = glfw
-        .create_window(1000, 500, "Rusty Glider", glfw::WindowMode::Windowed)
+        .create_window(1000, 500, "Rusty Quiz", glfw::WindowMode::Windowed)
         .unwrap()
         .0;
 
@@ -532,7 +532,7 @@ fn main() {
     print_gl_error();
 
     let mut texture: RgbaImage = RgbaImage::new(0, 0);
-    let mut hint_offsets_y: Vec<f32> = Vec::new();
+    let mut hint_offsets: Vec<(f32, f32)> = Vec::new();
     let mut hint_image_sizes: Vec<(f32, f32)> = Vec::new();
 
     let mut slides_iter = slides.iter();
@@ -541,12 +541,16 @@ fn main() {
     let mut right_answer = 0;
     let mut next_question = false;
 
+    let mut already_guessed = false;
+    let mut number_right = 0;
+    let mut number_wrong = 0;
+
     let mut old_key_state: [bool; 4] = [false; 4];
     let mut key_activated: [bool; 4] = [false; 4];
 
     if let Some(slide) = current_slide {
         right_answer = generate_question(current_category, &header, &slide, &slides);
-        texture = generate_slide_texture(&slide, &mut hint_image_sizes, &mut hint_offsets_y, &font);
+        texture = generate_slide_texture(&slide, &mut hint_image_sizes, &mut hint_offsets, &font);
         unsafe {
             set_texture_data(&texture);
         }
@@ -560,9 +564,16 @@ fn main() {
                 if key_activated[i] {
                     if i + 1 == right_answer {
                         println!("Answer #{} is correct", right_answer);
+                        if !already_guessed {
+                            number_right += 1;
+                        }
                         next_question = true;
                     } else {
                         println!("Try again!");
+                        if !already_guessed {
+                            number_wrong += 1;
+                            already_guessed = true;
+                        }
                     }
                 }
             }
@@ -582,11 +593,11 @@ fn main() {
                 );
             }
 
-            for i in 0..hint_offsets_y.len() {
+            for i in 0..hint_offsets.len() {
                 add_textured_box(
-                    (0.0, hint_offsets_y[i]),
+                    hint_offsets[i],
                     0.0,
-                    (0.0, hint_offsets_y[i]),
+                    hint_offsets[i],
                     (0.1, 0.1, 0.1),
                     hint_image_sizes[i],
                     window_size,
@@ -598,12 +609,17 @@ fn main() {
             unsafe {
                 set_vertex_data(&verts);
                 gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-                gl::DrawArrays(gl::TRIANGLES, 0, 6 * 3);
+                let mut number_of_tris = hint_offsets.len() * 6;
+                if slide.image.is_some() {
+                    number_of_tris += 6;
+                }
+                gl::DrawArrays(gl::TRIANGLES, 0, number_of_tris as i32);
             }
             window.swap_buffers();
 
             if next_question {
                 next_question = false;
+                already_guessed = false;
                 current_category += 1;
                 if current_category < header.questions.len() {
                     right_answer = generate_question(current_category, &header, &slide, &slides);
@@ -616,7 +632,7 @@ fn main() {
                         texture = generate_slide_texture(
                             &slide,
                             &mut hint_image_sizes,
-                            &mut hint_offsets_y,
+                            &mut hint_offsets,
                             &font,
                         );
                         unsafe {
@@ -666,4 +682,10 @@ fn main() {
         }
     }
     println!("You're done!");
+    println!("Number right: {}", number_right);
+    println!("Number wrong: {}", number_wrong);
+    println!(
+        "Percent correct: {}%",
+        (number_right as f32 / (number_right + number_wrong) as f32) * 100.0
+    );
 }
