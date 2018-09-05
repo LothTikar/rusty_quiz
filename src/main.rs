@@ -356,11 +356,7 @@ fn read_slides(csv_reader: &mut csv::Reader<std::fs::File>, header: &Header) -> 
             match i {
                 0 => {
                     if !value.is_empty() {
-                        slide.image = Some(
-                            image::open(value)
-                                .expect("Unable to open slide image!")
-                                .to_rgba(),
-                        );
+                        slide.image = Some(image::open(&value).expect(value.as_str()).to_rgba());
                     }
                 }
                 _ if i <= header.number_of_hints => {
@@ -384,12 +380,12 @@ fn read_header(csv_reader: &mut csv::Reader<std::fs::File>) -> Header {
         questions: Vec::new(),
     };
 
-    //It expects the first item to be "image file name." Hints are expected to only be placed immedently after "image file name." Everything after hints is expected to be a question.
+    //It expects the first item to be "image." Hints are expected to only be placed immedently after "image." Everything after hints is expected to be a question.
     for header_item in csv_reader.headers().unwrap().iter() {
         let header_item = header_item.to_string();
         match header_item.as_str() {
             "hint" => header.number_of_hints += 1,
-            "image file name" => (),
+            "image" => (),
             _ => {
                 header.questions.push(header_item);
             }
@@ -442,6 +438,9 @@ fn generate_slide_texture(
     let mut hint_images: Vec<RgbaImage> = Vec::new();
 
     for h in slide.hints.iter() {
+        if h.is_empty() {
+            continue;
+        }
         let image = render_text(&font, 20.0, &h);
         size.0 += image.width() as f32;
         size.1 = size.1.max(image.height() as f32);
@@ -475,6 +474,7 @@ fn main() {
 
     let mut csv_reader = {
         let args: Vec<String> = env::args().collect();
+        println!("{:?}", args);
         csv::Reader::from_path(
             &args
                 .get(1)
